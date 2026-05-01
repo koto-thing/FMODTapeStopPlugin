@@ -1,0 +1,11 @@
+﻿#ifndef FMODTAPESTOPPLUGIN_TAPESTOPPARAMETER_H
+#define FMODTAPESTOPPLUGIN_TAPESTOPPARAMETER_H
+
+/**
+ * @brief プラグインの内部データ
+ */
+struct TapeStopState {
+    float volume;
+};
+
+#endif //FMODTAPESTOPPLUGIN_TAPESTOPPARAMETER_H

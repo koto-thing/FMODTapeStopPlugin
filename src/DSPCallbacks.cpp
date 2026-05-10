@@ -92,21 +92,8 @@ FMOD_RESULT F_CALL TapeStop_Process(FMOD_DSP_STATE* dsp_state, unsigned int leng
         return FMOD_OK;
     }
 
-    // 出力バッファがない場合、入力バッファを無視して0で埋める
-    if (inBuffers->numbuffers == 0 || inBuffers->buffers == nullptr) {
-        for (int i = 0 ; i < outBuffers->numbuffers ; ++i) {
-            const int chs = outBuffers->buffernumchannels[i];
-            float *out = outBuffers->buffers[i];
-            for (unsigned int k = 0 ; k < length * static_cast<unsigned int>(chs) ; ++k) {
-                out[k] = 0.0f;
-            }
-        }
-
-        return FMOD_OK;
-    }
-
-    // 入力が待機状態の場合、出力バッファを0で埋める
-    if (inputsIdle) {
+    // 入力バッファがない、または入力が待機状態の場合、出力バッファを0で埋める
+    if (inBuffers->numbuffers == 0 || inBuffers->buffers == nullptr || inputsIdle) {
         for (int i = 0 ; i < outBuffers->numbuffers ; ++i) {
             const int chs = outBuffers->buffernumchannels[i];
             float *out = outBuffers->buffers[i];

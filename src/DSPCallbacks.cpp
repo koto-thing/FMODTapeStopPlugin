@@ -97,9 +97,7 @@ FMOD_RESULT F_CALL TapeStop_Process(FMOD_DSP_STATE* dsp_state, unsigned int leng
         for (int i = 0 ; i < outBuffers->numbuffers ; ++i) {
             const int chs = outBuffers->buffernumchannels[i];
             float *out = outBuffers->buffers[i];
-            for (unsigned int k = 0 ; k < length * static_cast<unsigned int>(chs) ; ++k) {
-                out[k] = 0.0f;
-            }
+            std::memset(out, 0, sizeof(float) * length * static_cast<unsigned int>(chs));
         }
 
         return FMOD_OK;
@@ -110,9 +108,7 @@ FMOD_RESULT F_CALL TapeStop_Process(FMOD_DSP_STATE* dsp_state, unsigned int leng
         for (int i = 0 ; i < outBuffers->numbuffers ; ++i) {
             const int chs = outBuffers->buffernumchannels[i];
             float *out = outBuffers->buffers[i];
-            for (unsigned int k = 0 ; k < length * static_cast<unsigned int>(chs) ; ++k) {
-                out[k] = 0.0f;
-            }
+            std::memset(out, 0, sizeof(float) * length * static_cast<unsigned int>(chs));
         }
 
         return FMOD_OK;

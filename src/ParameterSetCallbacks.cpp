@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "ParameterDesc.h"
 #include "ParameterIndex.h"
 #include "TapeStopInternalData.h"
 

@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++20 -I../src -I./include
+CXXFLAGS = -std=c++20 -I../src -I../src/InterfaceAdapter -I../src/Framework -I../src/UseCase -I./include
 BUILD_DIR = build
 
 all: $(BUILD_DIR)/test_ParameterGetCallbacks $(BUILD_DIR)/test_DSPCallbacks
@@ -10,7 +10,7 @@ $(BUILD_DIR)/test_ParameterGetCallbacks: $(BUILD_DIR)/test_ParameterGetCallbacks
 $(BUILD_DIR)/test_DSPCallbacks: $(BUILD_DIR)/test_DSPCallbacks.o $(BUILD_DIR)/DSPCallbacks.o $(BUILD_DIR)/ParameterDesc.o | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-$(BUILD_DIR)/ParameterGetCallbacks.o: ../src/ParameterGetCallbacks.cpp | $(BUILD_DIR)
+$(BUILD_DIR)/ParameterGetCallbacks.o: ../src/InterfaceAdapter/ParameterGetCallbacks.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/DSPCallbacks.o: ../src/DSPCallbacks.cpp | $(BUILD_DIR)

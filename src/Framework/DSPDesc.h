@@ -1,0 +1,10 @@
+#ifndef FMODTAPESTOPPLUGIN_DSPDESC_H
+#define FMODTAPESTOPPLUGIN_DSPDESC_H
+
+#include "fmod_dsp.h"
+
+extern "C" {
+    FMOD_EXPORT FMOD_DSP_DESCRIPTION* FMODGetDSPDescription();
+}
+
+#endif //FMODTAPESTOPPLUGIN_DSPDESC_H

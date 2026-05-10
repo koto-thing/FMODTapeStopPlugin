@@ -6,6 +6,8 @@ typedef enum {
     FMOD_ERR_INVALID_PARAM = 1,
 } FMOD_RESULT;
 
+typedef int FMOD_BOOL;
+
 #ifndef F_CALL
 #define F_CALL
 #endif

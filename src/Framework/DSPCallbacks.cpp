@@ -23,7 +23,7 @@ FMOD_RESULT F_CALL TapeStop_Create(FMOD_DSP_STATE *dsp_state) {
         return FMOD_ERR_INTERNAL;
     }
 
-    auto *state = (TapeStopState*)alloc_callback(sizeof(TapeStopState), FMOD_MEMORY_NORMAL, "DSPCallbacks.cpp");
+    auto *state = (TapeStopState*)alloc_callback(sizeof(TapeStopState), FMOD_MEMORY_NORMAL, __FILE__);
     if (state == nullptr) {
         return FMOD_ERR_MEMORY;
     }
@@ -37,10 +37,10 @@ FMOD_RESULT F_CALL TapeStop_Create(FMOD_DSP_STATE *dsp_state) {
     }
 
     // Let TapeStopEngine allocate itself using FMOD allocator
-    void* engine_mem = alloc_callback(sizeof(usecase::TapeStopEngine), FMOD_MEMORY_NORMAL, "DSPCallbacks.cpp");
+    void* engine_mem = alloc_callback(sizeof(usecase::TapeStopEngine), FMOD_MEMORY_NORMAL, __FILE__);
     if (!engine_mem) {
         state->~TapeStopState();
-        dsp_state->functions->free(state, FMOD_MEMORY_NORMAL, "DSPCallbacks.cpp");
+        dsp_state->functions->free(state, FMOD_MEMORY_NORMAL, __FILE__);
         return FMOD_ERR_MEMORY;
     }
 
@@ -70,10 +70,10 @@ FMOD_RESULT F_CALL TapeStop_Release(FMOD_DSP_STATE *dsp_state) {
     if (state) {
         if (state->engine) {
             state->engine->~TapeStopEngine();
-            free_callback(state->engine, FMOD_MEMORY_NORMAL, "DSPCallbacks.cpp");
+            free_callback(state->engine, FMOD_MEMORY_NORMAL, __FILE__);
         }
         state->~TapeStopState();
-        free_callback(state, FMOD_MEMORY_NORMAL, "DSPCallbacks.cpp");
+        free_callback(state, FMOD_MEMORY_NORMAL, __FILE__);
     }
 
     dsp_state->plugindata = nullptr;

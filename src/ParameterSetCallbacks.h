@@ -1,8 +1,0 @@
-﻿#ifndef FMODTAPESTOPPLUGIN_PARAMETERSETCALLBACKS_H
-#define FMODTAPESTOPPLUGIN_PARAMETERSETCALLBACKS_H
-#include "fmod_common.h"
-#include "fmod_dsp.h"
-
-FMOD_RESULT F_CALL TapeStop_SetParameterFloat(FMOD_DSP_STATE* dsp_state, int index, float value);
-
-#endif //FMODTAPESTOPPLUGIN_PARAMETERSETCALLBACKS_H

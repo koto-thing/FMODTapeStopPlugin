@@ -30,7 +30,7 @@ FMOD_RESULT F_CALL TapeStop_Create(FMOD_DSP_STATE *dsp_state) {
     }
 
     // メモリを確保
-    auto *state = (TapeStopState*)alloc_callback(sizeof(TapeStopState), FMOD_MEMORY_NORMAL, __FILE__);
+    auto *state = (TapeStopState*)alloc_callback(sizeof(TapeStopState), FMOD_MEMORY_NORMAL, "DSPCallbacks.cpp");
     if (state == nullptr) {
         return FMOD_ERR_MEMORY;
     }
@@ -63,7 +63,7 @@ FMOD_RESULT F_CALL TapeStop_Release(FMOD_DSP_STATE *dsp_state) {
     // TapeStopのインスタンスを取得
     auto *state = static_cast<TapeStopState*>(dsp_state->plugindata);
     if (state) {
-        free_callback(state, FMOD_MEMORY_NORMAL, __FILE__);
+        free_callback(state, FMOD_MEMORY_NORMAL, "DSPCallbacks.cpp");
     }
 
     // 内部データもクリアする

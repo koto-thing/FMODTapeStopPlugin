@@ -1,2 +1,5 @@
-﻿.env
+.env
 /ThirdParty
+/tests/build/
+/build/
+*.o

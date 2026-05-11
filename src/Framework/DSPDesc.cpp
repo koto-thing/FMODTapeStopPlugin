@@ -39,7 +39,7 @@ FMOD_DSP_DESCRIPTION tapestopDesc = {
 } // namespace tapestop::framework
 
 extern "C" {
-    FMOD_EXPORT FMOD_DSP_DESCRIPTION* FMODGetDSPDescription() {
+    F_EXPORT FMOD_DSP_DESCRIPTION* FMODGetDSPDescription() {
         tapestop::interface_adapter::InitParameterDescs();
         return &tapestop::framework::tapestopDesc;
     }

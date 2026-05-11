@@ -34,7 +34,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           python -m pip install --upgrade pip
           python -m pip install gdown
-          python -m gdown --id "$env:FMOD_DRIVE_FILE_ID" -O "${{ github.workspace }}\ThirdParty.zip"
+          python -m gdown "https://drive.google.com/uc?id=$env:FMOD_DRIVE_FILE_ID" -O "${{ github.workspace }}\ThirdParty.zip"
 
           if (!(Test-Path "${{ github.workspace }}\ThirdParty.zip")) {
             throw "ThirdParty.zip download failed."

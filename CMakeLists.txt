@@ -1,19 +1,16 @@
 cmake_minimum_required(VERSION 3.28)
-project(FMODTapeStopPlugin)
+project(FMODTapeStopPlugin LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---FMOD SDKのパスを指定---
-set(FMOD_SDK_PATH "${CMAKE_SOURCE_DIR}/ThirdParty")
+set(FMOD_SDK_PATH "${CMAKE_SOURCE_DIR}/ThirdParty" CACHE PATH "Path to the FMOD SDK root")
+set(FMOD_INCLUDE_DIR "${FMOD_SDK_PATH}/inc" CACHE PATH "Path to the FMOD SDK include directory")
+set(FMOD_LIBRARY_DIR "${FMOD_SDK_PATH}/lib" CACHE PATH "Path to the FMOD SDK library directory")
 
-# ---インクルードディレクトリを設定---
-if (EXISTS "${FMOD_SDK_PATH}/inc")
-    set(FMOD_INCLUDE_DIR "${FMOD_SDK_PATH}/inc")
-else()
-    # It's common that ThirdParty is not in the repo, but let's just make it a soft warning or assume it will be there at build time
-    message(WARNING "FMOD SDK include directory not found at ${FMOD_SDK_PATH}/inc")
-    set(FMOD_INCLUDE_DIR "${FMOD_SDK_PATH}/inc")
+if (NOT EXISTS "${FMOD_INCLUDE_DIR}")
+    message(FATAL_ERROR "FMOD SDK include directory not found at ${FMOD_INCLUDE_DIR}")
 endif()
 
 # ---ソースファイルの設定---
@@ -45,56 +42,75 @@ add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 # ---インクルードディレクトリを追加---
 target_include_directories(${PROJECT_NAME} PRIVATE "${FMOD_INCLUDE_DIR}")
 
-# Windows specific library linking
-if (WIN64)
-    # ---ライブラリディレクトリを設定---
-    if (EXISTS "${FMOD_SDK_PATH}/lib")
-        set(FMOD_LIBRARY_DIR "${FMOD_SDK_PATH}/lib")
-    else ()
-        message(WARNING "FMOD SDK library directory not found at ${FMOD_SDK_PATH}/lib")
-        set(FMOD_LIBRARY_DIR "${FMOD_SDK_PATH}/lib")
-    endif()
-
-    if (EXISTS "${FMOD_LIBRARY_DIR}/fmod_vc.lib")
-        set(FMOD_CORE_LIBRARY_RELEASE "${FMOD_LIBRARY_DIR}/fmod_vc.lib")
-    else()
-        set(FMOD_CORE_LIBRARY_RELEASE "${FMOD_LIBRARY_DIR}/fmod_vc.lib")
-    endif()
-
-    if (EXISTS "${FMOD_LIBRARY_DIR}/fmodL_vc.lib")
-        set(FMOD_CORE_LIBRARY_DEBUG "${FMOD_LIBRARY_DIR}/fmodL_vc.lib")
-    else()
-        set(FMOD_CORE_LIBRARY_DEBUG "${FMOD_LIBRARY_DIR}/fmodL_vc.lib")
-    endif()
-
-    if (EXISTS "${FMOD_LIBRARY_DIR}/fmodstudio_vc.lib")
-        set(FMOD_STUDIO_LIBRARY_RELEASE "${FMOD_LIBRARY_DIR}/fmodstudio_vc.lib")
-    else()
-        set(FMOD_STUDIO_LIBRARY_RELEASE "${FMOD_LIBRARY_DIR}/fmodstudio_vc.lib")
-    endif()
-
-    if (EXISTS "${FMOD_LIBRARY_DIR}/fmodstudioL_vc.lib")
-        set(FMOD_STUDIO_LIBRARY_DEBUG "${FMOD_LIBRARY_DIR}/fmodstudioL_vc.lib")
-    else()
-        set(FMOD_STUDIO_LIBRARY_DEBUG "${FMOD_LIBRARY_DIR}/fmodstudioL_vc.lib")
-    endif()
-
-    add_library(FMOD::Core UNKNOWN IMPORTED)
-    set_target_properties(FMOD::Core PROPERTIES
-            IMPORTED_LOCATION_RELEASE "${FMOD_CORE_LIBRARY_RELEASE}"
-            IMPORTED_LOCATION_DEBUG "${FMOD_CORE_LIBRARY_DEBUG}"
-            MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
-            MAP_IMPORTED_CONFIG_MINSIZEREL Release
-    )
-
-    add_library(FMOD::Studio UNKNOWN IMPORTED)
-    set_target_properties(FMOD::Studio PROPERTIES
-            IMPORTED_LOCATION_RELEASE "${FMOD_STUDIO_LIBRARY_RELEASE}"
-            IMPORTED_LOCATION_DEBUG "${FMOD_STUDIO_LIBRARY_DEBUG}"
-            MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
-            MAP_IMPORTED_CONFIG_MINSIZEREL Release
-    )
-
-    # ---ライブラリをリンク---
-    target_link_libraries(${PROJECT_NAME} PRIVATE FMOD::Core FMOD::Studio)
+if (MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()
+
+set(FMOD_CORE_LIBRARY_RELEASE "" CACHE FILEPATH "Path to the FMOD Core release library")
+set(FMOD_CORE_LIBRARY_DEBUG "" CACHE FILEPATH "Path to the FMOD Core debug library")
+set(FMOD_STUDIO_LIBRARY_RELEASE "" CACHE FILEPATH "Path to the FMOD Studio release library")
+set(FMOD_STUDIO_LIBRARY_DEBUG "" CACHE FILEPATH "Path to the FMOD Studio debug library")
+
+function(fmod_add_imported_library target_name release_library debug_library)
+    add_library(${target_name} UNKNOWN IMPORTED)
+
+    if (NOT release_library)
+        message(FATAL_ERROR "${target_name} release library was not found.")
+    endif()
+
+    if (NOT debug_library)
+        set(debug_library "${release_library}")
+    endif()
+
+    set_target_properties(${target_name} PROPERTIES
+            IMPORTED_LOCATION "${release_library}"
+            IMPORTED_LOCATION_RELEASE "${release_library}"
+            IMPORTED_LOCATION_DEBUG "${debug_library}"
+            MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
+            MAP_IMPORTED_CONFIG_MINSIZEREL Release
+    )
+endfunction()
+
+if (WIN32)
+    if (NOT FMOD_CORE_LIBRARY_RELEASE)
+        set(FMOD_CORE_LIBRARY_RELEASE "${FMOD_LIBRARY_DIR}/fmod_vc.lib")
+    endif()
+    if (NOT FMOD_CORE_LIBRARY_DEBUG)
+        set(FMOD_CORE_LIBRARY_DEBUG "${FMOD_LIBRARY_DIR}/fmodL_vc.lib")
+    endif()
+    if (NOT FMOD_STUDIO_LIBRARY_RELEASE)
+        set(FMOD_STUDIO_LIBRARY_RELEASE "${FMOD_LIBRARY_DIR}/fmodstudio_vc.lib")
+    endif()
+    if (NOT FMOD_STUDIO_LIBRARY_DEBUG)
+        set(FMOD_STUDIO_LIBRARY_DEBUG "${FMOD_LIBRARY_DIR}/fmodstudioL_vc.lib")
+    endif()
+elseif(APPLE)
+    set(FMOD_LIBRARY_HINTS
+            "${FMOD_LIBRARY_DIR}"
+            "${FMOD_SDK_PATH}/api/core/lib/macos"
+            "${FMOD_SDK_PATH}/api/studio/lib/macos"
+            "${FMOD_SDK_PATH}/api/core/lib"
+            "${FMOD_SDK_PATH}/api/studio/lib"
+    )
+
+    if (NOT FMOD_CORE_LIBRARY_RELEASE)
+        find_library(FMOD_CORE_LIBRARY_RELEASE NAMES fmod PATHS ${FMOD_LIBRARY_HINTS} NO_DEFAULT_PATH)
+    endif()
+    if (NOT FMOD_CORE_LIBRARY_DEBUG)
+        find_library(FMOD_CORE_LIBRARY_DEBUG NAMES fmodL PATHS ${FMOD_LIBRARY_HINTS} NO_DEFAULT_PATH)
+    endif()
+    if (NOT FMOD_STUDIO_LIBRARY_RELEASE)
+        find_library(FMOD_STUDIO_LIBRARY_RELEASE NAMES fmodstudio PATHS ${FMOD_LIBRARY_HINTS} NO_DEFAULT_PATH)
+    endif()
+    if (NOT FMOD_STUDIO_LIBRARY_DEBUG)
+        find_library(FMOD_STUDIO_LIBRARY_DEBUG NAMES fmodstudioL PATHS ${FMOD_LIBRARY_HINTS} NO_DEFAULT_PATH)
+    endif()
+else()
+    message(FATAL_ERROR "This project currently supports Windows and macOS only.")
+endif()
+
+fmod_add_imported_library(FMOD::Core "${FMOD_CORE_LIBRARY_RELEASE}" "${FMOD_CORE_LIBRARY_DEBUG}")
+fmod_add_imported_library(FMOD::Studio "${FMOD_STUDIO_LIBRARY_RELEASE}" "${FMOD_STUDIO_LIBRARY_DEBUG}")
+
+# ---ライブラリをリンク---
+target_link_libraries(${PROJECT_NAME} PRIVATE FMOD::Core FMOD::Studio)

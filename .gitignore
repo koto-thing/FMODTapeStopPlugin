@@ -3,3 +3,5 @@
 /tests/build/
 /build/
 *.o
+/build-ci-test
+/build-ci-test-default

@@ -1,0 +1,84 @@
+﻿name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      FMOD_DRIVE_FILE_ID: 1oTG2dKqaCkCf5FtpTiPsttwsLkcXsQbf
+      FMOD_SDK_PATH: ${{ github.workspace }}\ThirdParty
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tool versions
+        shell: pwsh
+        run: |
+          cmake --version
+          ninja --version
+          python --version
+
+      - name: Download ThirdParty.zip from Google Drive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m pip install --upgrade pip
+          python -m pip install gdown
+          python -m gdown --id "$env:FMOD_DRIVE_FILE_ID" -O "${{ github.workspace }}\ThirdParty.zip"
+
+          if (!(Test-Path "${{ github.workspace }}\ThirdParty.zip")) {
+            throw "ThirdParty.zip download failed."
+          }
+
+      - name: Extract ThirdParty.zip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Expand-Archive -Path "${{ github.workspace }}\ThirdParty.zip" -DestinationPath "${{ github.workspace }}" -Force
+
+      - name: Validate FMOD SDK files
+        shell: pwsh
+        run: |
+          if (!(Test-Path "$env:FMOD_SDK_PATH\inc\fmod_dsp.h")) {
+            throw "FMOD header not found: $env:FMOD_SDK_PATH\inc\fmod_dsp.h"
+          }
+          if (!(Test-Path "$env:FMOD_SDK_PATH\lib\fmod_vc.lib")) {
+            throw "FMOD core lib not found: $env:FMOD_SDK_PATH\lib\fmod_vc.lib"
+          }
+          if (!(Test-Path "$env:FMOD_SDK_PATH\lib\fmodstudio_vc.lib")) {
+            throw "FMOD studio lib not found: $env:FMOD_SDK_PATH\lib\fmodstudio_vc.lib"
+          }
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          cmake -S "${{ github.workspace }}" -B "${{ github.workspace }}\build\windows" -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DFMOD_SDK_PATH="$env:FMOD_SDK_PATH"
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build "${{ github.workspace }}\build\windows" --config Release --verbose
+
+      - name: Upload build artifact (Windows)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FMODTapeStopPlugin-windows
+          if-no-files-found: warn
+          path: |
+            ${{ github.workspace }}\build\windows\**\FMODTapeStopPlugin.dll
+            ${{ github.workspace }}\build\windows\**\FMODTapeStopPlugin.lib
+            ${{ github.workspace }}\build\windows\CMakeCache.txt
+
+

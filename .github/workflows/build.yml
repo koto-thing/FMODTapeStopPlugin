@@ -44,7 +44,36 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Expand-Archive -Path "${{ github.workspace }}\ThirdParty.zip" -DestinationPath "${{ github.workspace }}" -Force
+          $extractDir = "${{ github.workspace }}\_thirdparty_extract"
+          $targetDir = "${{ github.workspace }}\ThirdParty"
+
+          Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $targetDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $extractDir | Out-Null
+
+          Expand-Archive -Path "${{ github.workspace }}\ThirdParty.zip" -DestinationPath $extractDir -Force
+
+          $candidate = $null
+
+          if ((Test-Path (Join-Path $extractDir "inc\fmod_dsp.h")) -and
+              (Test-Path (Join-Path $extractDir "lib\fmod_vc.lib")) -and
+              (Test-Path (Join-Path $extractDir "lib\fmodstudio_vc.lib"))) {
+            $candidate = Get-Item $extractDir
+          }
+
+          if (-not $candidate) {
+            $candidate = Get-ChildItem -Path $extractDir -Directory -Recurse | Where-Object {
+              (Test-Path (Join-Path $_.FullName "inc\fmod_dsp.h")) -and
+              (Test-Path (Join-Path $_.FullName "lib\fmod_vc.lib")) -and
+              (Test-Path (Join-Path $_.FullName "lib\fmodstudio_vc.lib"))
+            } | Select-Object -First 1
+          }
+
+          if (-not $candidate) {
+            throw "ThirdParty directory not found inside ThirdParty.zip."
+          }
+
+          Copy-Item -Path $candidate.FullName -Destination $targetDir -Recurse -Force
 
       - name: Validate FMOD SDK files
         shell: pwsh

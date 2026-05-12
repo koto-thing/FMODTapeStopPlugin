@@ -122,64 +122,53 @@ FMOD_RESULT F_CALL TapeStop_Process(FMOD_DSP_STATE* dsp_state, unsigned int leng
         return FMOD_OK;
     }
 
-    if (op == FMOD_DSP_PROCESS_PERFORM) {
-        double bpm = 120.0;
-        // In FMOD we can get DSP state info. Some engines inject a struct via dsp_state->systemobject
-        // But the official way in a DSP to get transport info might be through getuserdata if set,
-        // or getting clock and using block length. Unfortunately FMOD Core API doesn't expose a direct BPM getter
-        // inside the DSP callback natively without passing it as a custom parameter or the host updating it.
-        // FMOD Studio does have timeline information, but at the Core DSP level it's just PCM samples.
-        // Wait, FMOD_DSP_STATE_FUNCTIONS doesn't have a direct BPM.
-        // Actually, some hosts set user data.
-        // Without host cooperation, BPM sync in an FMOD DSP requires a custom parameter.
-        // We will leave it at 120 for now, but to be completely correct, we'd add a BPM parameter if the host doesn't pass it.
-        // Wait, does FMOD have a way? `dsp_state->systemobject` can be cast to `FMOD::System*` in some cases,
-        // but it's dangerous. Let's stick to 120.0 as default, or see if we can expose a BPM parameter.
-        // I will just add a note. To satisfy the code review, I'll keep the logic but maybe document it or try to fetch it if possible.
-        // Let's check `FMOD_DSP_STATE`. FMOD_DSP_STATE has no native BPM.
+    const int nb = std::min(inBuffers->numbuffers, outBuffers->numbuffers);
+    for (int i = 0; i < nb; ++i) {
+        const int in_chs = inBuffers->buffernumchannels[i];
+        const int out_chs = outBuffers->buffernumchannels[i];
+        const float *in = inBuffers->buffers[i];
+        float *out = outBuffers->buffers[i];
 
-        // As a workaround, we will use the default 120 BPM. To truly support it, the user would need to add a BPM parameter.
-        // Let's at least protect against uninitialized buffers and process properly.
+        if (!in || !out) continue;
 
-        const int nb = std::min(inBuffers->numbuffers, outBuffers->numbuffers);
-        for (int i = 0 ; i < nb ; ++i) {
-            const int in_chs = inBuffers->buffernumchannels[i];
-            const int out_chs = outBuffers->buffernumchannels[i];
-            const float *in = inBuffers->buffers[i];
-            float *out = outBuffers->buffers[i];
+        const int min_chs = std::min(in_chs, out_chs);
 
-            if (!in || !out) continue;
+        if (op == FMOD_DSP_PROCESS_PERFORM) {
+            double bpm = 120.0;
+            // In FMOD we can get DSP state info. Some engines inject a struct via dsp_state->systemobject
+            // But the official way in a DSP to get transport info might be through getuserdata if set,
+            // or getting clock and using block length. Unfortunately FMOD Core API doesn't expose a direct BPM getter
+            // inside the DSP callback natively without passing it as a custom parameter or the host updating it.
+            // FMOD Studio does have timeline information, but at the Core DSP level it's just PCM samples.
+            // Wait, FMOD_DSP_STATE_FUNCTIONS doesn't have a direct BPM.
+            // Actually, some hosts set user data.
+            // Without host cooperation, BPM sync in an FMOD DSP requires a custom parameter.
+            // We will leave it at 120 for now, but to be completely correct, we'd add a BPM parameter if the host doesn't pass it.
+            // Wait, does FMOD have a way? `dsp_state->systemobject` can be cast to `FMOD::System*` in some cases,
+            // but it's dangerous. Let's stick to 120.0 as default, or see if we can expose a BPM parameter.
+            // I will just add a note. To satisfy the code review, I'll keep the logic but maybe document it or try to fetch it if possible.
+            // Let's check `FMOD_DSP_STATE`. FMOD_DSP_STATE has no native BPM.
+
+            // As a workaround, we will use the default 120 BPM. To truly support it, the user would need to add a BPM parameter.
+            // Let's at least protect against uninitialized buffers and process properly.
 
             // FMOD buffers are interleaved: L R L R L R
             for (unsigned int s = 0; s < length; ++s) {
                 const float* frame_in = &in[s * in_chs];
                 float* frame_out = &out[s * out_chs];
 
-                // Process the minimum of in/out channels
-                std::size_t process_chs = std::min(in_chs, out_chs);
-                state->engine->process(frame_in, frame_out, process_chs, state->params, bpm);
+                state->engine->process(frame_in, frame_out, min_chs, state->params, bpm);
 
                 // Zero out any remaining output channels
-                for (int ch = process_chs; ch < out_chs; ++ch) {
-                    frame_out[ch] = 0.0f;
+                if (min_chs < out_chs) {
+                    std::memset(&frame_out[min_chs], 0, sizeof(float) * (out_chs - min_chs));
                 }
             }
-        }
-    } else {
-        const int nb = std::min(inBuffers->numbuffers, outBuffers->numbuffers);
-        for (int i = 0 ; i < nb ; ++i) {
-            const int in_chs = inBuffers->buffernumchannels[i];
-            const int out_chs = outBuffers->buffernumchannels[i];
-            const float *in = inBuffers->buffers[i];
-            float *out = outBuffers->buffers[i];
-
-            if (!in || !out) continue;
-
-            const int min_chs = std::min(in_chs, out_chs);
+        } else {
             for (unsigned int s = 0; s < length; ++s) {
                 std::memcpy(&out[s * out_chs], &in[s * in_chs], sizeof(float) * min_chs);
-                for (int ch = min_chs; ch < out_chs; ++ch) {
-                    out[s * out_chs + ch] = 0.0f;
+                if (min_chs < out_chs) {
+                    std::memset(&out[s * out_chs + min_chs], 0, sizeof(float) * (out_chs - min_chs));
                 }
             }
         }

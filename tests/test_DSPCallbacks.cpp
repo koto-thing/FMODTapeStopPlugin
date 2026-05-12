@@ -2,11 +2,31 @@
 #include <cassert>
 #include <vector>
 #include <cstring>
+#include <cstdlib>
 #include "Framework/DSPCallbacks.h"
 #include "Framework/TapeStopInternalData.h"
 #include "InterfaceAdapter/ParameterDesc.h"
 
 using namespace tapestop;
+
+void* mock_alloc(unsigned int size, unsigned int type, const char* sourcestr) {
+    return std::malloc(size);
+}
+
+void mock_free(void* ptr, unsigned int type, const char* sourcestr) {
+    std::free(ptr);
+}
+
+void mock_getsamplerate(FMOD_DSP_STATE *dsp_state, int *rate) {
+    if (rate) *rate = 48000;
+}
+
+FMOD_DSP_STATE_FUNCTIONS mock_functions = {
+    mock_alloc,
+    mock_free,
+    mock_getsamplerate
+};
+
 
 void test_TapeStop_Process_NullParams() {
     std::cout << "Running test_TapeStop_Process_NullParams..." << std::endl;
@@ -36,9 +56,153 @@ void test_TapeStop_Process_ZeroBuffers() {
     std::cout << "Passed!" << std::endl;
 }
 
+
+void test_TapeStop_Process_InputsIdle() {
+    std::cout << "Running test_TapeStop_Process_InputsIdle..." << std::endl;
+    FMOD_DSP_STATE dsp_state = {0};
+    dsp_state.functions = &mock_functions;
+
+    // Call create to properly initialize plugindata
+    assert(framework::TapeStop_Create(&dsp_state) == FMOD_OK);
+
+    const int numChannels = 2;
+    const int bufferLength = 256;
+    int channels[1] = {numChannels};
+
+    float inBufferData[bufferLength * numChannels];
+    float outBufferData[bufferLength * numChannels];
+
+    // Fill output with some dummy data to ensure it gets cleared
+    for (int i = 0; i < bufferLength * numChannels; ++i) {
+        outBufferData[i] = 1.0f;
+        inBufferData[i] = 0.5f;
+    }
+
+    float* inBuffersPtrs[1] = {inBufferData};
+    float* outBuffersPtrs[1] = {outBufferData};
+
+    FMOD_DSP_BUFFER_ARRAY inBuffers = {0};
+    inBuffers.numbuffers = 1;
+    inBuffers.buffernumchannels = channels;
+    inBuffers.buffers = inBuffersPtrs;
+
+    FMOD_DSP_BUFFER_ARRAY outBuffers = {0};
+    outBuffers.numbuffers = 1;
+    outBuffers.buffernumchannels = channels;
+    outBuffers.buffers = outBuffersPtrs;
+
+    FMOD_RESULT result = framework::TapeStop_Process(&dsp_state, bufferLength, &inBuffers, &outBuffers, FMOD_TRUE, FMOD_DSP_PROCESS_PERFORM);
+    assert(result == FMOD_OK);
+
+    // Verify output buffer is zeroed out
+    for (int i = 0; i < bufferLength * numChannels; ++i) {
+        assert(outBufferData[i] == 0.0f);
+    }
+
+    // Clean up
+    assert(framework::TapeStop_Release(&dsp_state) == FMOD_OK);
+    std::cout << "Passed!" << std::endl;
+}
+
+
+void test_TapeStop_Process_Query() {
+    std::cout << "Running test_TapeStop_Process_Query..." << std::endl;
+    FMOD_DSP_STATE dsp_state = {0};
+    dsp_state.functions = &mock_functions;
+
+    assert(framework::TapeStop_Create(&dsp_state) == FMOD_OK);
+
+    const int numChannels = 2;
+    const int bufferLength = 256;
+    int channels[1] = {numChannels};
+
+    float inBufferData[bufferLength * numChannels];
+    float outBufferData[bufferLength * numChannels];
+
+    for (int i = 0; i < bufferLength * numChannels; ++i) {
+        inBufferData[i] = (float)i; // Set distinct pattern
+        outBufferData[i] = -1.0f;   // Set dummy output
+    }
+
+    float* inBuffersPtrs[1] = {inBufferData};
+    float* outBuffersPtrs[1] = {outBufferData};
+
+    FMOD_DSP_BUFFER_ARRAY inBuffers = {0};
+    inBuffers.numbuffers = 1;
+    inBuffers.buffernumchannels = channels;
+    inBuffers.buffers = inBuffersPtrs;
+
+    FMOD_DSP_BUFFER_ARRAY outBuffers = {0};
+    outBuffers.numbuffers = 1;
+    outBuffers.buffernumchannels = channels;
+    outBuffers.buffers = outBuffersPtrs;
+
+    FMOD_RESULT result = framework::TapeStop_Process(&dsp_state, bufferLength, &inBuffers, &outBuffers, FMOD_FALSE, FMOD_DSP_PROCESS_QUERY);
+    assert(result == FMOD_OK);
+
+    // Verify output buffer matches input buffer
+    for (int i = 0; i < bufferLength * numChannels; ++i) {
+        assert(outBufferData[i] == inBufferData[i]);
+    }
+
+    assert(framework::TapeStop_Release(&dsp_state) == FMOD_OK);
+    std::cout << "Passed!" << std::endl;
+}
+
+
+void test_TapeStop_Process_Perform() {
+    std::cout << "Running test_TapeStop_Process_Perform..." << std::endl;
+    FMOD_DSP_STATE dsp_state = {0};
+    dsp_state.functions = &mock_functions;
+
+    assert(framework::TapeStop_Create(&dsp_state) == FMOD_OK);
+
+    const int numChannels = 2;
+    const int bufferLength = 256;
+    int channels[1] = {numChannels};
+
+    float inBufferData[bufferLength * numChannels];
+    float outBufferData[bufferLength * numChannels];
+
+    for (int i = 0; i < bufferLength * numChannels; ++i) {
+        inBufferData[i] = 0.5f; // Sine wave/dummy input
+        outBufferData[i] = -1.0f; // Marker output
+    }
+
+    float* inBuffersPtrs[1] = {inBufferData};
+    float* outBuffersPtrs[1] = {outBufferData};
+
+    FMOD_DSP_BUFFER_ARRAY inBuffers = {0};
+    inBuffers.numbuffers = 1;
+    inBuffers.buffernumchannels = channels;
+    inBuffers.buffers = inBuffersPtrs;
+
+    FMOD_DSP_BUFFER_ARRAY outBuffers = {0};
+    outBuffers.numbuffers = 1;
+    outBuffers.buffernumchannels = channels;
+    outBuffers.buffers = outBuffersPtrs;
+
+    FMOD_RESULT result = framework::TapeStop_Process(&dsp_state, bufferLength, &inBuffers, &outBuffers, FMOD_FALSE, FMOD_DSP_PROCESS_PERFORM);
+    assert(result == FMOD_OK);
+
+    // Check that engine actually ran and modified outBufferData from the -1.0f marker
+    for (int i = 0; i < bufferLength * numChannels; ++i) {
+        assert(outBufferData[i] != -1.0f);
+    }
+
+    assert(framework::TapeStop_Release(&dsp_state) == FMOD_OK);
+    std::cout << "Passed!" << std::endl;
+}
+
 int main() {
+
+
+
     test_TapeStop_Process_NullParams();
     test_TapeStop_Process_ZeroBuffers();
+    test_TapeStop_Process_InputsIdle();
+    test_TapeStop_Process_Query();
+    test_TapeStop_Process_Perform();
     std::cout << "All DSPCallbacks tests passed!" << std::endl;
     return 0;
 }
